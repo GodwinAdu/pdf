@@ -80,6 +80,27 @@ export async function fetchFileByKey({ key, userId }: FetchFileKeyProps) {
     }
 }
 
+interface FetchFileIdProps {
+    fieldId: string;
+    userId: string
+}
+
+export async function fetchFileById({ fieldId, userId }: FetchFileIdProps) {
+    await connectToDB();
+    try {
+        const file = await File.findOne({ _id:fieldId, userId });
+
+        if (!file) {
+            return {status: "PENDING" as const}
+        };
+
+        return {status: file.uploadStatus};
+
+    } catch (error: any) {
+        console.log("cannot fetch file by key", error)
+    }
+}
+
 interface fetchPdfProps{
     id:string;
     userId:string

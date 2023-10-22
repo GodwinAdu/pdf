@@ -3,7 +3,7 @@ import { privateProcedure, publicProcedure, router } from './trpc';
 import { TRPCError } from '@trpc/server';
 import { createUser, fetchUser } from '@/lib/actions/user.actions';
 import { currentUser } from '@clerk/nextjs';
-import { deleteFile, fetchFileByKey, fetchUserFiles } from '@/lib/actions/file.actions';
+import { deleteFile, fetchFileById, fetchFileByKey, fetchUserFiles } from '@/lib/actions/file.actions';
 import { z } from 'zod';
 
 
@@ -31,6 +31,15 @@ export const appRouter = router({
         const {userId} = ctx;
         
         return await fetchUserFiles({userId})
+    }),
+    getFileUploadStatus:privateProcedure.input(z.object({fieldId:z.string()}))
+    .mutation(async({input,ctx})=>{
+        const {userId} = ctx;
+        const file = await fetchFileById({
+            fieldId:input.fieldId,
+            userId
+        })
+        
     }),
     getFile: privateProcedure.input(z.object({key:z.string()}))
     .mutation(async({ctx,input})=>{
