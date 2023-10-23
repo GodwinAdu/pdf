@@ -1,7 +1,6 @@
 "use server"
 
 import File from "../models/file.models";
-import User from "../models/user.models";
 import { connectToDB } from "../mongoose"
 
 interface createFileProps {
@@ -81,20 +80,23 @@ export async function fetchFileByKey({ key, userId }: FetchFileKeyProps) {
 }
 
 interface FetchFileIdProps {
-    fieldId: string;
+    id: string;
     userId: string
 }
 
-export async function fetchFileById({ fieldId, userId }: FetchFileIdProps) {
+export async function fetchFileById({ id, userId }: FetchFileIdProps) {
     await connectToDB();
     try {
-        const file = await File.findOne({ _id:fieldId, userId });
+        console.log("server id",id)
+        const file = await File.findOne({ _id:id, userId });
 
         if (!file) {
             return {status: "PENDING" as const}
         };
+       
 
-        return {status: file.uploadStatus};
+        return file
+       
 
     } catch (error: any) {
         console.log("cannot fetch file by key", error)
