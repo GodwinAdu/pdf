@@ -1,15 +1,15 @@
 
-import { createFile } from '@/lib/actions/file.actions';
+import { createFile, fetchCurrentPDF, updateUploadStatus } from '@/lib/actions/file.actions';
 import { currentUser } from '@clerk/nextjs'
 import {
     createUploadthing,
     type FileRouter,
 } from 'uploadthing/next'
 
-// import { PDFLoader } from 'langchain/document_loaders/fs/pdf'
-// import { OpenAIEmbeddings } from 'langchain/embeddings/openai'
-// import { PineconeStore } from 'langchain/vectorstores/pinecone'
-// import { getPineconeClient } from '@/lib/pinecone'
+import { PDFLoader } from 'langchain/document_loaders/fs/pdf'
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai'
+import { PineconeStore } from 'langchain/vectorstores/pinecone'
+import { getPineconeClient } from '@/lib/pinecone'
 // import { getUserSubscriptionPlan } from '@/lib/stripe'
 // import { PLANS } from '@/config/stripe'
 
@@ -37,7 +37,7 @@ const onUploadComplete = async ({
         url: string
     }
 }) => {
-    
+
     const data = {
         key: file.key,
         name: file.name,
@@ -46,83 +46,80 @@ const onUploadComplete = async ({
         uploadStatus: 'PROCESSING',
     };
 
-    const createdFile = await createFile(data)
+    await createFile(data)
 
-    console.log("createfiles:",createdFile);
+    const fetchPdf = await fetchCurrentPDF({ key: file.key })
 
-    //   try {
-    //     const response = await fetch(
-    //       `https://uploadthing-prod.s3.us-west-2.amazonaws.com/${file.key}`
-    //     )
+    console.log("files:", fetchPdf.url);
 
-    //     const blob = await response.blob()
+    try {
+        const response = await fetch(
+            `https://uploadthing-prod.s3.us-west-2.amazonaws.com/${file.key}`
+        )
+        const blob = await response.blob()
 
-    //     const loader = new PDFLoader(blob)
+        const loader = new PDFLoader(blob)
+        console.log("loader", loader)
 
-    //     const pageLevelDocs = await loader.load()
+        const pageLevelDocs = await loader.load()
 
-    //     const pagesAmt = pageLevelDocs.length
+        const pagesAmt = pageLevelDocs.length
 
-    //     const { subscriptionPlan } = metadata
-    //     const { isSubscribed } = subscriptionPlan
+        console.log(pagesAmt)
 
-    // const isProExceeded =
-    //   pagesAmt >
-    //   PLANS.find((plan) => plan.name === 'Pro')!.pagesPerPdf
-    // const isFreeExceeded =
-    //   pagesAmt >
-    //   PLANS.find((plan) => plan.name === 'Free')!
-    //     .pagesPerPdf
+        // const { subscriptionPlan } = metadata
+        // const { isSubscribed } = subscriptionPlan
 
-    // if (
-    //   (isSubscribed && isProExceeded) ||
-    //   (!isSubscribed && isFreeExceeded)
-    // ) {
-    //   await db.file.update({
-    //     data: {
-    //       uploadStatus: 'FAILED',
-    //     },
-    //     where: {
-    //       id: createdFile.id,
-    //     },
-    //   })
-    // }
+        // const isProExceeded =
+        //   pagesAmt >
+        //   PLANS.find((plan) => plan.name === 'Pro')!.pagesPerPdf
+        // const isFreeExceeded =
+        //   pagesAmt >
+        //   PLANS.find((plan) => plan.name === 'Free')!
+        //     .pagesPerPdf
 
-    // vectorize and index entire document
-    //     const pinecone = await getPineconeClient()
-    //     const pineconeIndex = pinecone.Index('quill')
+        // if (
+        //   (isSubscribed && isProExceeded) ||
+        //   (!isSubscribed && isFreeExceeded)
+        // ) {
+        //   await db.file.update({
+        //     data: {
+        //       uploadStatus: 'FAILED',
+        //     },
+        //     where: {
+        //       id: createdFile.id,
+        //     },
+        //   })
+        // }
 
-    //     const embeddings = new OpenAIEmbeddings({
-    //       openAIApiKey: process.env.OPENAI_API_KEY,
-    //     })
+        // vectorize and index entire document
+        const pinecone = await getPineconeClient()
+        const pineconeIndex = pinecone.Index('summaq')
 
-    //     await PineconeStore.fromDocuments(
-    //       pageLevelDocs,
-    //       embeddings,
-    //       {
-    //         pineconeIndex,
-    //         namespace: createdFile.id,
-    //       }
-    //     )
+        const embeddings = new OpenAIEmbeddings({
+            openAIApiKey: process.env.OPENAI_API_KEY,
+        })
 
-    //     await db.file.update({
-    //       data: {
-    //         uploadStatus: 'SUCCESS',
-    //       },
-    //       where: {
-    //         id: createdFile.id,
-    //       },
-    //     })
-    //   } catch (err) {
-    //     await db.file.update({
-    //       data: {
-    //         uploadStatus: 'FAILED',
-    //       },
-    //       where: {
-    //         id: createdFile.id,
-    //       },
-    //     })
-    //   }
+        await PineconeStore.fromDocuments(
+            pageLevelDocs,
+            embeddings,
+            {
+                pineconeIndex,
+                namespace: fetchPdf._id,
+            }
+        )
+        console.log("updating id", fetchPdf._id)
+        await updateUploadStatus({
+            fileId: fetchPdf._id,
+            newStatus: 'SUCCESS',
+        });
+    } catch (err: any) {
+        console.error('Error in the try block:', err);
+        await updateUploadStatus({
+            fileId: fetchPdf._id,
+            newStatus: 'FAILED',
+        });
+    }
 }
 
 export const ourFileRouter = {

@@ -129,6 +129,27 @@ export async function fetchPDF({ id, userId }:fetchPdfProps) {
     }
 }
 
+interface CurrentProps{
+    key:string
+}
+export async function fetchCurrentPDF({key}:CurrentProps) {
+    await connectToDB();
+    try {
+        
+        const getFile = await File.findOne({ key });
+
+        if (!getFile) {
+            throw new Error("File not found or not authorized.");
+        }
+
+        return getFile;
+
+    } catch (error: any) {
+        console.log("Couldnt fetch file from DB",error);
+        throw error;
+    }
+}
+
 
 
 interface deleteFileProps {
@@ -157,3 +178,29 @@ export async function deleteFile({ userId, id }: deleteFileProps) {
         throw error; // Rethrow the error or handle it as needed.
     }
 }
+
+
+interface statusProps{
+    fileId:string;
+    newStatus:string
+}
+export async function  updateUploadStatus({fileId, newStatus}:statusProps) {
+    await connectToDB();
+    console.log("servr fileID",fileId)
+    try {
+      const updatedFile = await File.findByIdAndUpdate(
+        fileId,
+        { uploadStatus: newStatus },
+        { new: true }
+      );
+  
+      if (!updatedFile) {
+        throw new Error('File not found');
+      }
+  
+      return updatedFile;
+    } catch (error) {
+      throw error;
+    }
+  };
+  
