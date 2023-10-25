@@ -10,6 +10,7 @@ import { PDFLoader } from 'langchain/document_loaders/fs/pdf'
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai'
 import { PineconeStore } from 'langchain/vectorstores/pinecone'
 import { getPineconeClient } from '@/lib/pinecone'
+import { fetchDataWithRetry } from '@/lib/fetchRetry';
 // import { getUserSubscriptionPlan } from '@/lib/stripe'
 // import { PLANS } from '@/config/stripe'
 
@@ -53,12 +54,13 @@ const onUploadComplete = async ({
     console.log("files:", fetchPdf.url);
 
     try {
-        const response = await fetch(
-            `https://uploadthing-prod.s3.us-west-2.amazonaws.com/${file.key}`
-        )
-        const blob = await response.blob()
+        console.log("starting",file.key)
+        const value = `https://uploadthing-prod.s3.us-west-2.amazonaws.com/${file.key}`
+        const response = await fetchDataWithRetry(value, 10)
+        const blob = await response.blob();
+        const loader = new PDFLoader(blob);
 
-        const loader = new PDFLoader(blob)
+
         console.log("loader", loader)
 
         const pageLevelDocs = await loader.load()
